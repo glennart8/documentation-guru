@@ -2,6 +2,10 @@ import lancedb
 import time
 from backend.constants import VECTOR_DATABASE_PATH, DATA_PATH
 from backend.data_models import Documentation
+from pypdf import pypdf as PdfReader
+import docx
+
+
 
 def setup_vector_db(path):
     vector_db = lancedb.connect(uri = path)
@@ -26,13 +30,58 @@ def chunk_text(text, chunk_size=1000, overlap=200):
         
     return chunks
 
+def extract_text_from_file(file_path):
+    """Extraherar text baserat på filändelse."""
+    suffix = file_path.suffix.lower()
+    
+    if suffix == ".pdf":
+        if PdfReader is None:
+            print(f"pypdf saknas. Hoppar över {file_path.name}")
+            return ""
+        try:
+            reader = PdfReader(file_path)
+            text = []
+            for page in reader.pages:
+                extracted = page.extract_text()
+                if extracted:
+                    text.append(extracted)
+            return "\n".join(text)
+        except Exception as e:
+            print(f"Fel vid läsning av PDF {file_path.name}: {e}")
+            return ""
+
+    elif suffix == ".docx":
+        if docx is None:
+            print(f"python-docx saknas. Hoppar över {file_path.name}")
+            return ""
+        try:
+            doc = docx.Document(file_path)
+            return "\n".join([para.text for para in doc.paragraphs])
+        except Exception as e:
+            print(f"Fel vid läsning av DOCX {file_path.name}: {e}")
+            return ""
+            
+    else:
+        # Standard textläsning för .md och .txt
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception as e:
+            print(f"Fel vid läsning av fil {file_path.name}: {e}")
+            return ""
+
 def ingest_docs_to_vector_db(table):
-    # Look for both .md and .txt files
-    files = list(DATA_PATH.glob("*.md")) + list(DATA_PATH.glob("*.txt"))
+    # Leta efter flera filtyper
+    extensions = ["*.md", "*.txt", "*.pdf", "*.docx"]
+    files = []
+    for ext in extensions:
+        files.extend(list(DATA_PATH.glob(ext)))
     
     for file in files:
-        with open(file, "r", encoding="utf-8") as f:
-            content = f.read()
+        content = extract_text_from_file(file)
+        
+        if not content:
+            continue
             
         doc_id = file.stem
         # Remove existing entries for this file to avoid duplicates
