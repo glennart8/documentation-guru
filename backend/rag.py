@@ -1,12 +1,21 @@
 from pydantic_ai import Agent
+from pydantic_ai.models.fallback import FallbackModel
+from pydantic_ai.models.google import GoogleModel
 from backend.data_models import RagResponse
 from backend.constants import VECTOR_DATABASE_PATH
 import lancedb
 
 vector_db = lancedb.connect(uri=VECTOR_DATABASE_PATH)
 
+# Skapa en fallback-kedja som provar modeller i tur och ordning
+model = FallbackModel(
+    GoogleModel("gemini-2.5-flash", provider="google-gla"),
+    GoogleModel("gemini-2.0-flash", provider="google-gla"),
+    GoogleModel("gemini-1.5-flash", provider="google-gla"),
+)
+
 rag_agent = Agent(
-    model="google-gla:gemini-2.5-flash",
+    model=model,
     retries=2,
     system_prompt=(
         "You are a 'Documentation Guru', an expert software engineering assistant focused on PydanticAI, LangChain, and Python.",
@@ -52,5 +61,4 @@ def list_available_documents() -> str:
     unique_files = df["filename"].unique()
     return ", ".join(unique_files)
 
-    
     
