@@ -78,12 +78,19 @@ def ingest_docs_to_vector_db(table):
         files.extend(list(DATA_PATH.glob(ext)))
     
     for file in files:
+        doc_id = file.stem
+        
+        # Kontrollera om filen redan finns i databasen
+        existing = table.search().where(f"doc_id = '{doc_id}'").limit(1).to_list()
+        if existing:
+            print(f"Skipping {file.name} - already ingested.")
+            continue
+
         content = extract_text_from_file(file)
         
         if not content:
             continue
             
-        doc_id = file.stem
         # Remove existing entries for this file to avoid duplicates
         table.delete(f"doc_id = '{doc_id}'")
 
