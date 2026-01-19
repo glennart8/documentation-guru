@@ -1,13 +1,17 @@
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 from pydantic_ai import Agent
 from pydantic_ai.models.fallback import FallbackModel
 from pydantic_ai.models.google import GoogleModel
 from backend.data_models import RagResponse
-from backend.constants import VECTOR_DATABASE_PATH
-import lancedb
 
-vector_db = lancedb.connect(uri=VECTOR_DATABASE_PATH)
+# --- IMPORTERA FRÅN SERVRARNA ---
+from mcp_servers.tts_server import speak_text
+from mcp_servers.knowledge_server import search_documents, list_files
 
-# Skapa en fallback-kedja som provar modeller i tur och ordning
+# fallback-kedja
 model = FallbackModel(
     GoogleModel("gemini-2.5-flash", provider="google-gla"),
     GoogleModel("gemini-2.0-flash", provider="google-gla"),
@@ -23,42 +27,34 @@ rag_agent = Agent(
         "If the user asks about a specific library version or feature, verify it against the retrieved context.",
         "Don't hallucinate. If the answer isn't in the context, state that you cannot find the information in the available documentation.",
         "Keep answers technical, structured, and helpful for developers. Include the source filename for reference.",
+        "If the user asks you to speak, read aloud, or give a verbal summary, use the 'speak' tool immediately."
     ),
     output_type=RagResponse,
 )
 
+# WRAPPERS FÖR VERKTYGEN
+# Hämta de 3 bäst matchande dokumenten
 @rag_agent.tool_plain
 def retrieve_top_documents(query: str, k=3) -> str:
     """
-    Uses vector search to find the closest k matching documents to the query
+    Uses vector search to find the closest k matching documents to the query.
     """
-    results = vector_db["documentation"].search(query=query).limit(k).to_list()
-    
-    formatted_results = []
-    for result in results:
-        formatted_results.append(f"""
-    Filename: {result["filename"]},
-    Filepath: {result["filepath"]},
-    Content: {result["content"]}
-    """)
-        
-    return "\n\n---\n\n".join(formatted_results)
+    return search_documents(query, k)
 
-
+# Visa alla dokument
 @rag_agent.tool_plain
 def list_available_documents() -> str:
     """
     List all file names currently in the database. 
-    Use this when the user asks what documents are available or what you can read.
+    Use this when the user asks what documents are available.
     """
-    # Hämtar alla rader som en pandas dataframe (effektivt för mindre datamängder)
-    df = vector_db["documentation"].to_pandas()
-    
-    if df.empty:
-        return "The database is empty."
-        
-    # Returnerar en lista med unika filnamn
-    unique_files = df["filename"].unique()
-    return ", ".join(unique_files)
+    return list_files()
 
-    
+# Läs upp
+@rag_agent.tool_plain
+async def speak(text: str) -> str:
+    """
+    Reads the provided text aloud using an AI voice.
+    Use this tool when the user explicitly asks you to speak.
+    """
+    return await speak_text(text)

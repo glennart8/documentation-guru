@@ -23,8 +23,22 @@ The application consists of a Python backend utilizing PydanticAI for agent orch
 
 ## Project Structure
 
+```text
+Pydantic_ai_agent_RAG/
+├── backend/
+│   ├── constants.py
+│   ├── data_models.py
+│   └── rag.py
+├── frontend/
+│   └── app.py
+├── api.py
+├── ingestion.py
+└── README.md
+```
+
 - `backend/rag.py`: Contains the core logic for the PydanticAI agent, database connection, and retrieval tools (`retrieve_top_documents`, `list_available_documents`).
 - `frontend/app.py`: The client-side application built with Streamlit. It handles user input, communicates with the backend API, and displays the chat history and source details.
+- `ingestion.py`: Handles loading documents, chunking text, and populating the vector database.
 
 ## Setup and Usage
 
