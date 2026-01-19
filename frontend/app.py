@@ -47,7 +47,7 @@ def display_chat_history(messages: List[Dict]):
 # --- Huvudlayout ---
 
 def layout():
-    st.title("📚 Documentation Guru")
+    st.title("Documentation Guru")
     st.caption("Ask technical questions about PydanticAI & LanceDB")
 
     # 1. Initiera state

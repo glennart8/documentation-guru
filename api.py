@@ -4,6 +4,11 @@ from backend.data_models import Prompt, APIResponse
 
 app = FastAPI()
 
+@app.post("/")
+async def hello_message():
+    return {"message": "Hello World!"}
+    
+
 @app.post("/rag/query", response_model=APIResponse)
 async def query_documentation(query: Prompt):
     result = await rag_agent.run(query.prompt, message_history=query.messages)
